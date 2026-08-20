@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>90 Day Tracker</title>
+
+<!-- PWA / full-screen app support -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#050907">
+<meta name="background-color" content="#050907">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="90 Day Tracker">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#050907;
+    --panel:#0a1512;
+    --panel-2:#0c1815;
+    --border:rgba(84,224,181,0.28);
+    --border-soft:rgba(255,255,255,0.06);
+    --teal:#34e0b1;
+    --teal-dim:#1c8a6c;
+    --teal-glow:rgba(52,224,177,0.10);
+    --text:#eef4f1;
+    --text-dim:#8a978f;
+    --text-faint:#4b5751;
+    --danger:#e0684f;
+    --mono:'JetBrains Mono',ui-monospace,monospace;
+    --display:'Poppins',sans-serif;
+    --r:14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(ellipse 900px 500px at 50% 100%, var(--teal-glow), transparent 70%),
+      var(--bg);
+    background-attachment:fixed;
+    color:var(--text);
+    font-family:var(--display);
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{background:var(--teal);color:#03110c;}
+  button{font-family:inherit;cursor:pointer;}
+  input,select,textarea{font-family:inherit;}
+  a{color:var(--teal);}
+
+  /* ---------- Layout ---------- */
+  #app{max-width:760px;margin:0 auto;padding:28px 24px 80px;}
+  .topnav{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:6px 2px 34px;
+    flex-wrap:wrap;gap:14px;
+  }
+  .brand{
+    font-family:var(--mono);font-size:11px;letter-spacing:2.5px;color:var(--text-dim);
+  }
+  .brand b{color:var(--teal);}
+  .tabs{display:flex;gap:4px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--border-soft);border-radius:999px;padding:4px;}
+  .tab{
+    background:transparent;border:none;color:var(--text-faint);
+    font-family:var(--mono);font-size:10.5px;letter-spacing:1.6px;
+    padding:8px 14px;border-radius:999px;transition:all .2s ease;
+  }
+  .tab:hover{color:var(--text-dim);}
+  .tab.active{background:rgba(52,224,177,0.12);color:var(--teal);}
+
+  .tabpanel{display:none;animation:fadein .35s ease;}
+  .tabpanel.active{display:block;}
+  @keyframes fadein{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+
+  .eyebrow{
+    font-family:var(--mono);font-size:11px;letter-spacing:3px;color:var(--text-dim);
+    margin-bottom:18px;text-align:center;
+  }
+  .headline{
+    font-family:var(--display);font-weight:300;font-size:56px;line-height:1.1;
+    text-align:center;margin:0 0 8px;color:var(--text);
+  }
+  .headline .accent{color:var(--teal);}
+  .subline{text-align:center;color:var(--text-dim);font-size:14px;margin-bottom:36px;}
+
+  .daymeta{
+    text-align:center;font-family:var(--mono);font-size:11px;letter-spacing:2px;
+    color:var(--text-faint);margin-bottom:40px;
+  }
+  .daymeta b{color:var(--teal);}
+
+  .card{
+    background:var(--panel);border:1px solid var(--border-soft);border-radius:var(--r);
+    padding:24px 26px;margin-bottom:18px;
+  }
+  .card-label{
+    font-family:var(--mono);font-size:10.5px;letter-spacing:2px;color:var(--text-faint);
+    margin-bottom:16px;
+  }
+
+  /* checklist */
+  #taskList{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px;}
+  .task-row{
+    display:flex;align-items:center;gap:14px;padding:12px 6px;
+    border-bottom:1px solid var(--border-soft);
+  }
+  .task-row:last-child{border-bottom:none;}
+  .task-check{
+    width:20px;height:20px;flex:0 0 20px;border-radius:6px;border:1.5px solid var(--text-faint);
+    display:flex;align-items:center;justify-content:center;transition:all .15s ease;
+  }
+  .task-check.checked{background:var(--teal);border-color:var(--teal);}
+  .task-check.checked:after{content:"";width:10px;height:6px;border-left:2px solid #03110c;border-bottom:2px solid #03110c;transform:rotate(-45deg) translate(1px,-1px);}
+  .task-label{font-size:15px;color:var(--text);flex:1;}
+  .task-row.done .task-label{color:var(--text-dim);text-decoration:line-through;text-decoration-color:var(--text-faint);}
+
+  .metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .metric-field label{display:block;font-family:var(--mono);font-size:10px;letter-spacing:1.4px;color:var(--text-faint);margin-bottom:6px;}
+  .metric-field input{
+    width:100%;background:var(--panel-2);border:1px solid var(--border-soft);border-radius:8px;
+    color:var(--text);padding:10px 12px;font-size:14px;outline:none;transition:border-color .15s;
+  }
+  .metric-field input:focus{border-color:var(--teal-dim);}
+
+  .btn-outline{
+    display:block;width:100%;text-align:center;background:transparent;
+    border:1px solid var(--teal-dim);color:var(--teal);
+    font-family:var(--mono);font-size:12px;letter-spacing:2.5px;
+    padding:20px;border-radius:999px;margin:10px 0 18px;transition:all .2s ease;
+  }
+  .btn-outline:hover{border-color:var(--teal);background:var(--teal-glow);}
+  .btn-outline:disabled{opacity:.35;cursor:not-allowed;}
+  .btn-solid{
+    background:var(--teal);color:#03120d;border:none;border-radius:999px;
+    font-family:var(--mono);font-size:11px;letter-spacing:2px;padding:13px 22px;
+  }
+  .btn-solid:hover{filter:brightness(1.08);}
+  .btn-ghost{
+    background:transparent;border:1px solid var(--border-soft);color:var(--text-dim);
+    border-radius:999px;font-family:var(--mono);font-size:11px;letter-spacing:1.5px;padding:12px 18px;
+  }
+  .btn-ghost:hover{border-color:var(--text-faint);color:var(--text);}
+
+  .panel{
+    background:var(--panel-2);border:1px solid var(--border-soft);border-radius:var(--r);
+    padding:22px 24px;margin-bottom:16px;
+  }
+  .panel.locked{border-color:var(--border);background:linear-gradient(180deg, rgba(52,224,177,0.05), transparent);}
+  .panel-label{font-family:var(--mono);font-size:10.5px;letter-spacing:2px;color:var(--text-faint);margin-bottom:14px;}
+  .panel.locked .panel-label{color:var(--text-faint);}
+  .hidden{display:none !important;}
+
+  .progress-track{height:4px;background:rgba(255,255,255,0.06);border-radius:4px;overflow:hidden;}
+  .progress-fill{height:100%;width:0%;background:var(--teal);border-radius:4px;transition:width 1.1s cubic-bezier(.4,0,.2,1);}
+
+  .quote{font-size:20px;font-weight:300;line-height:1.45;color:var(--text);margin:0 0 16px;}
+  .nextcheckin{font-family:var(--mono);font-size:11px;letter-spacing:1.5px;color:var(--teal);}
+
+  .banner{
+    border:1px solid var(--border);background:var(--teal-glow);border-radius:var(--r);
+    padding:16px 20px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;
+  }
+  .banner span{font-family:var(--mono);font-size:11.5px;letter-spacing:1px;color:var(--text);}
+
+  /* grid tab */
+  .grid-wrap{display:grid;grid-template-columns:repeat(13,1fr);gap:6px;margin-bottom:22px;}
+  @media (max-width:560px){.grid-wrap{grid-template-columns:repeat(9,1fr);}}
+  .cell{
+    aspect-ratio:1/1;border-radius:5px;background:var(--panel-2);border:1px solid var(--border-soft);
+    display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:9px;color:var(--text-faint);
+    cursor:pointer;position:relative;transition:transform .1s;
+  }
+  .cell:hover{transform:scale(1.12);z-index:2;}
+  .cell.today{border-color:var(--teal);color:var(--teal);}
+  .cell.checkpoint:after{content:"";position:absolute;inset:-3px;border:1px solid var(--teal-dim);border-radius:7px;}
+  .legend{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10px;color:var(--text-faint);margin-bottom:26px;}
+  .legend .sw{width:12px;height:12px;border-radius:3px;}
+
+  .stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px;}
+  .stat-box{background:var(--panel);border:1px solid var(--border-soft);border-radius:var(--r);padding:18px;text-align:center;}
+  .stat-box .num{font-size:28px;font-weight:300;color:var(--teal);}
+  .stat-box .lab{font-family:var(--mono);font-size:9.5px;letter-spacing:1.4px;color:var(--text-faint);margin-top:4px;}
+
+  /* review */
+  .review-item{border-bottom:1px solid var(--border-soft);padding:14px 0;}
+  .review-item:last-child{border-bottom:none;}
+  .review-item .rh{font-family:var(--mono);font-size:10.5px;color:var(--teal);letter-spacing:1px;margin-bottom:6px;}
+  .review-item p{margin:4px 0;color:var(--text-dim);font-size:13.5px;line-height:1.5;}
+  textarea{
+    width:100%;background:var(--panel-2);border:1px solid var(--border-soft);border-radius:8px;
+    color:var(--text);padding:12px;font-size:14px;min-height:70px;resize:vertical;outline:none;
+  }
+  textarea:focus{border-color:var(--teal-dim);}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-family:var(--mono);font-size:10px;letter-spacing:1.4px;color:var(--text-faint);margin-bottom:6px;}
+
+  /* nutrition */
+  .macro-row{display:flex;gap:14px;margin:18px 0;flex-wrap:wrap;}
+  .macro-box{flex:1;min-width:110px;background:var(--panel-2);border:1px solid var(--border-soft);border-radius:10px;padding:14px;text-align:center;}
+  .macro-box .v{font-size:22px;color:var(--teal);font-weight:400;}
+  .macro-box .l{font-family:var(--mono);font-size:9px;letter-spacing:1.2px;color:var(--text-faint);margin-top:4px;}
+  .meal{padding:14px 0;border-bottom:1px solid var(--border-soft);}
+  .meal:last-child{border-bottom:none;}
+  .meal .mh{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--teal);letter-spacing:1px;margin-bottom:6px;}
+  .meal ul{margin:0;padding-left:18px;color:var(--text-dim);font-size:13.5px;line-height:1.6;}
+
+  select{width:100%;background:var(--panel-2);border:1px solid var(--border-soft);border-radius:8px;color:var(--text);padding:10px 12px;font-size:14px;outline:none;}
+
+  .settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .task-edit-row{display:flex;gap:8px;margin-bottom:8px;}
+  .task-edit-row input{flex:1;background:var(--panel-2);border:1px solid var(--border-soft);border-radius:8px;color:var(--text);padding:9px 12px;font-size:13.5px;outline:none;}
+
+  .note{font-size:12px;color:var(--text-faint);line-height:1.6;margin-top:10px;}
+  footer.disclaimer{text-align:center;font-family:var(--mono);font-size:9.5px;color:var(--text-faint);letter-spacing:1px;margin-top:40px;line-height:1.8;}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <nav class="topnav">
+    <div class="brand"><b>90</b>&nbsp;DAY&nbsp;TRACKER</div>
+    <div class="tabs">
+      <button class="tab active" data-tab="today">TODAY</button>
+      <button class="tab" data-tab="grid">GRID</button>
+      <button class="tab" data-tab="review">REVIEW</button>
+      <button class="tab" data-tab="nutrition">NUTRITION</button>
+      <button class="tab" data-tab="settings">SETTINGS</button>
+    </div>
+  </nav>
+
+  <!-- TODAY -->
+  <section class="tabpanel active" id="tab-today">
+    <div class="eyebrow">FINALISE THE DAY</div>
+    <h1 class="headline">Lock it in.<br>Then sleep.</h1>
+    <div class="daymeta">DAY <b id="dayNum">1</b> OF 90 — <span id="dateStr">—</span></div>
+
+    <div id="checkpointBanner" class="banner hidden">
+      <span id="checkpointText">CHECKPOINT</span>
+      <button class="btn-ghost" data-tab-jump="review">OPEN REVIEW</button>
+    </div>
+    <div id="weeklyBanner" class="banner hidden">
+      <span>WEEKLY REVIEW IS OPEN</span>
+      <button class="btn-ghost" data-tab-jump="review">REVIEW WEEK</button>
+    </div>
+
+    <div class="card">
+      <div class="card-label">EIGHT NON-NEGOTIABLES</div>
+      <ul id="taskList"></ul>
+    </div>
+
+    <div class="card">
+      <div class="card-label">DAILY METRICS</div>
+      <div class="metric-grid">
+        <div class="metric-field"><label>WEIGHT (KG)</label><input type="number" step="0.1" id="mWeight" placeholder="—"></div>
+        <div class="metric-field"><label>SLEEP (HRS)</label><input type="number" step="0.1" id="mSleep" placeholder="—"></div>
+        <div class="metric-field"><label>STEPS</label><input type="number" step="1" id="mSteps" placeholder="—"></div>
+        <div class="metric-field"><label>SCREEN TIME (HRS)</label><input type="number" step="0.1" id="mScreen" placeholder="—"></div>
+      </div>
+    </div>
+
+    <button class="btn-outline" id="finaliseBtn">FINALISE DATA FOR THE DAY</button>
+
+    <div class="panel hidden" id="savingPanel">
+      <div class="panel-label">SAVING OPERATOR DATA</div>
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    </div>
+
+    <div class="panel locked hidden" id="lockedPanel">
+      <div class="panel-label">DAY LOCKED</div>
+      <p class="quote" id="quoteText"></p>
+      <div class="nextcheckin">NEXT CHECK IN — TOMORROW, <span id="checkinTimeLabel"></span></div>
+      <div style="margin-top:16px;"><button class="btn-ghost" id="editDayBtn">EDIT TODAY</button></div>
+    </div>
+  </section>
+
+  <!-- GRID -->
+  <section class="tabpanel" id="tab-grid">
+    <div class="eyebrow">THE RUN</div>
+    <h1 class="headline" style="font-size:40px;">Ninety days,<br>on record.</h1>
+
+    <div class="stat-row">
+      <div class="stat-box"><div class="num" id="statStreak">0</div><div class="lab">CURRENT STREAK</div></div>
+      <div class="stat-box"><div class="num" id="statAvg">0%</div><div class="lab">AVG COMPLETION</div></div>
+      <div class="stat-box"><div class="num" id="statDaysLogged">0</div><div class="lab">DAYS LOGGED</div></div>
+    </div>
+
+    <div class="legend">
+      <span>LOW</span>
+      <span class="sw" style="background:var(--panel-2);border:1px solid var(--border-soft);"></span>
+      <span class="sw" style="background:rgba(52,224,177,0.25);"></span>
+      <span class="sw" style="background:rgba(52,224,177,0.55);"></span>
+      <span class="sw" style="background:var(--teal);"></span>
+      <span>HIGH · ring = checkpoint</span>
+    </div>
+
+    <div class="grid-wrap" id="gridWrap"></div>
+
+    <div class="card" id="cellDetail" style="display:none;">
+      <div class="card-label" id="cellDetailTitle">DAY —</div>
+      <div id="cellDetailBody" style="font-size:13.5px;color:var(--text-dim);line-height:1.7;"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">WEIGHT TREND (KG)</div>
+      <svg id="weightChart" viewBox="0 0 700 160" style="width:100%;height:140px;overflow:visible;"></svg>
+    </div>
+  </section>
+
+  <!-- REVIEW -->
+  <section class="tabpanel" id="tab-review">
+    <div class="eyebrow">WEEKLY REVIEW</div>
+    <h1 class="headline" style="font-size:40px;">Tell the truth<br>about the week.</h1>
+
+    <div class="card" id="reviewFormCard">
+      <div class="card-label" id="reviewFormLabel">THIS WEEK</div>
+      <div class="field"><label>WHAT WORKED</label><textarea id="rvWorked" placeholder="What held up under pressure this week..."></textarea></div>
+      <div class="field"><label>WHAT SLIPPED</label><textarea id="rvSlipped" placeholder="Where you negotiated with yourself..."></textarea></div>
+      <div class="field"><label>WAIST (CM) — OPTIONAL</label><input type="number" step="0.1" id="rvWaist" style="width:100%;background:var(--panel-2);border:1px solid var(--border-soft);border-radius:8px;color:var(--text);padding:10px 12px;font-size:14px;outline:none;"></div>
+      <div class="field"><label>SELF SCORE (1–10)</label><input type="number" min="1" max="10" id="rvScore" style="width:100%;background:var(--panel-2);border:1px solid var(--border-soft);border-radius:8px;color:var(--text);padding:10px 12px;font-size:14px;outline:none;"></div>
+      <button class="btn-solid" id="saveReviewBtn" style="width:100%;">SAVE REVIEW</button>
+    </div>
+
+    <div class="card">
+      <div class="card-label">PAST REVIEWS</div>
+      <div id="reviewList"><p class="note">Nothing logged yet.</p></div>
+    </div>
+  </section>
+
+  <!-- NUTRITION -->
+  <section class="tabpanel" id="tab-nutrition">
+    <div class="eyebrow">FUEL THE BUILD</div>
+    <h1 class="headline" style="font-size:40px;">Targets, built<br>from your numbers.</h1>
+
+    <div class="card">
+      <div class="card-label">YOUR NUMBERS</div>
+      <div class="settings-grid">
+        <div class="metric-field"><label>SEX</label>
+          <select id="nSex"><option value="male">MALE</option><option value="female">FEMALE</option></select>
+        </div>
+        <div class="metric-field"><label>AGE</label><input type="number" id="nAge" placeholder="—"></div>
+        <div class="metric-field"><label>HEIGHT (CM)</label><input type="number" id="nHeight" placeholder="—"></div>
+        <div class="metric-field"><label>WEIGHT (KG)</label><input type="number" step="0.1" id="nWeight" placeholder="—"></div>
+        <div class="metric-field"><label>ACTIVITY LEVEL</label>
+          <select id="nActivity">
+            <option value="1.2">SEDENTARY</option>
+            <option value="1.375">LIGHT (1–3×/WK)</option>
+            <option value="1.55" selected>MODERATE (3–5×/WK)</option>
+            <option value="1.725">HIGH (6–7×/WK)</option>
+            <option value="1.9">VERY HIGH</option>
+          </select>
+        </div>
+        <div class="metric-field"><label>GOAL</label>
+          <select id="nGoal">
+            <option value="-0.2">CUT</option>
+            <option value="0" selected>MAINTAIN</option>
+            <option value="0.1">LEAN BUILD</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn-solid" id="calcBtn" style="width:100%;margin-top:16px;">CALCULATE TARGETS</button>
+    </div>
+
+    <div class="card" id="resultCard" style="display:none;">
+      <div class="card-label">DAILY TARGETS</div>
+      <div class="macro-row">
+        <div class="macro-box"><div class="v" id="rCal">—</div><div class="l">CALORIES</div></div>
+        <div class="macro-box"><div class="v" id="rProt">—</div><div class="l">PROTEIN (G)</div></div>
+        <div class="macro-box"><div class="v" id="rFat">—</div><div class="l">FAT (G)</div></div>
+        <div class="macro-box"><div class="v" id="rCarb">—</div><div class="l">CARBS (G)</div></div>
+      </div>
+      <div class="note">Estimate from the Mifflin-St Jeor equation. It's a starting point, not a prescription — adjust against real results over 2–3 weeks. Not medical advice.</div>
+    </div>
+
+    <div class="card" id="mealCard" style="display:none;">
+      <div class="card-label">SUGGESTED MEAL SPLIT</div>
+      <div id="mealList"></div>
+    </div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section class="tabpanel" id="tab-settings">
+    <div class="eyebrow">CONFIGURE</div>
+    <h1 class="headline" style="font-size:40px;">Set it once.<br>Then run it.</h1>
+
+    <div class="card">
+      <div class="card-label">THE EIGHT</div>
+      <div id="taskEditList"></div>
+      <div class="note">Edit the wording of each non-negotiable. These are what you tick off every day on the Today tab.</div>
+    </div>
+
+    <div class="card">
+      <div class="settings-grid">
+        <div class="metric-field"><label>DAY 1 (START DATE)</label><input type="date" id="sStartDate"></div>
+        <div class="metric-field"><label>CHECK-IN TIME</label><input type="time" id="sCheckinTime"></div>
+      </div>
+    </div>
+
+    <button class="btn-solid" id="saveSettingsBtn" style="width:100%;">SAVE SETTINGS</button>
+
+    <div class="card" style="margin-top:18px;">
+      <div class="card-label">DATA</div>
+      <div class="note">Everything lives in this browser's local storage. Nothing is uploaded and no one else can see it. To keep it that way, open this file directly in your browser (double-click it, or drag it into a browser tab) rather than through a hosted preview — and use the same browser each time so your data is still there tomorrow.</div>
+      <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn-ghost" id="exportBtn">EXPORT DATA (.JSON)</button>
+        <button class="btn-ghost" id="resetBtn" style="border-color:rgba(224,104,79,0.4);color:#e0684f;">RESET ALL DATA</button>
+      </div>
+    </div>
+  </section>
+
+  <footer class="disclaimer">CONSISTENCY IS NOT INTENSITY.<br>IT IS THE REFUSAL TO NEGOTIATE WITH YOURSELF.</footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var STORE_KEY = "ndt_state_v1";
+
+  var QUOTES = [
+    "Consistency is not intensity. It is the refusal to negotiate with yourself.",
+    "You don't need a better day. You need the same day, repeated.",
+    "The record doesn't lie. That's the point of keeping one.",
+    "Discipline is just a decision you already made, showing up on time.",
+    "Nobody drifts into day ninety. You walk there, one logged day at a time.",
+    "The version of you that wants results already exists. Today, you acted like them.",
+    "Motivation was optional today. You showed up anyway. That's the whole system.",
+    "Small and repeated beats large and occasional.",
+    "You are not behind. You are exactly as far as your logged days say you are.",
+    "The day is closed. Tomorrow doesn't know about today's excuses."
+  ];
+
+  var DEFAULT_TASKS = [
+    "Non-Negotiable 1",
+    "Non-Negotiable 2",
+    "Non-Negotiable 3",
+    "Non-Negotiable 4",
+    "Non-Negotiable 5",
+    "Non-Negotiable 6",
+    "Non-Negotiable 7",
+    "Non-Negotiable 8"
+  ];
+
+  function todayISO(d){
+    d = d || new Date();
+    var tz = d.getTimezoneOffset()*60000;
+    return new Date(d - tz).toISOString().slice(0,10);
+  }
+  function addDays(iso, n){
+    var d = new Date(iso+"T00:00:00");
+    d.setDate(d.getDate()+n);
+    return todayISO(d);
+  }
+  function diffDays(a,b){
+    var da = new Date(a+"T00:00:00"), db = new Date(b+"T00:00:00");
+    return Math.round((db-da)/86400000);
+  }
+  function fmtDate(iso){
+    var d = new Date(iso+"T00:00:00");
+    return d.toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"}).toUpperCase();
+  }
+
+  var defaultState = {
+    startDate: todayISO(),
+    checkinTime: "21:00",
+    tasks: DEFAULT_TASKS.slice(),
+    entries: {},        // date -> {tasks:[bool], weight, sleep, steps, screen, locked, lockedAt, quote}
+    reviews: {},         // weekNumber -> {worked, slipped, waist, score, savedAt}
+    nutrition: null
+  };
+
+  function loadState(){
+    try{
+      var raw = localStorage.getItem(STORE_KEY);
+      if(!raw) return JSON.parse(JSON.stringify(defaultState));
+      var parsed = JSON.parse(raw);
+      return Object.assign(JSON.parse(JSON.stringify(defaultState)), parsed);
+    }catch(e){
+      console.error("Could not load saved data, starting fresh.", e);
+      return JSON.parse(JSON.stringify(defaultState));
+    }
+  }
+  function saveState(){
+    try{
+      localStorage.setItem(STORE_KEY, JSON.stringify(state));
+    }catch(e){
+      console.error("Could not save data.", e);
+    }
+  }
+
+  var state = loadState();
+
+  // ---------- nav ----------
+  var tabs = document.querySelectorAll(".tab");
+  tabs.forEach(function(t){
+    t.addEventListener("click", function(){ activateTab(t.dataset.tab); });
+  });
+  document.querySelectorAll("[data-tab-jump]").forEach(function(b){
+    b.addEventListener("click", function(){ activateTab(b.dataset.tabJump); });
+  });
+  function activateTab(name){
+    tabs.forEach(function(t){ t.classList.toggle("active", t.dataset.tab===name); });
+    document.querySelectorAll(".tabpanel").forEach(function(p){
+      p.classList.toggle("active", p.id === "tab-"+name);
+    });
+    if(name==="grid") renderGrid();
+    if(name==="review") renderReview();
+  }
+
+  // ---------- day helpers ----------
+  function currentDate(){ return todayISO(); }
+  function dayNumber(dateIso){
+    return Math.max(1, diffDays(state.startDate, dateIso) + 1);
+  }
+  function getEntry(dateIso){
+    if(!state.entries[dateIso]){
+      state.entries[dateIso] = {
+        tasks: state.tasks.map(function(){return false;}),
+        weight:"", sleep:"", steps:"", screen:"",
+        locked:false, lockedAt:null, quote:null
+      };
+    }
+    // keep task array length in sync with settings
+    var e = state.entries[dateIso];
+    while(e.tasks.length < state.tasks.length) e.tasks.push(false);
+    e.tasks.length = state.tasks.length;
+    return e;
+  }
+  function scoreOf(entry){
+    if(!entry) return null;
+    var done = entry.tasks.filter(Boolean).length;
+    return entry.tasks.length ? Math.round((done/entry.tasks.length)*100) : 0;
+  }
+
+  // ---------- TODAY tab ----------
+  var todayIso = currentDate();
+
+  function renderToday(){
+    var entry = getEntry(todayIso);
+    document.getElementById("dayNum").textContent = Math.min(90, dayNumber(todayIso));
+    document.getElementById("dateStr").textContent = fmtDate(todayIso);
+
+    var list = document.getElementById("taskList");
+    list.innerHTML = "";
+    state.tasks.forEach(function(label, i){
+      var li = document.createElement("li");
+      li.className = "task-row" + (entry.tasks[i] ? " done" : "");
+      li.innerHTML = '<div class="task-check'+(entry.tasks[i]?" checked":"")+'" data-i="'+i+'"></div><div class="task-label">'+escapeHtml(label)+'</div>';
+      list.appendChild(li);
+    });
+    list.querySelectorAll(".task-check").forEach(function(box){
+      box.addEventListener("click", function(){
+        if(entry.locked) return;
+        var i = +box.dataset.i;
+        entry.tasks[i] = !entry.tasks[i];
+        saveState();
+        renderToday();
+      });
+    });
+
+    document.getElementById("mWeight").value = entry.weight;
+    document.getElementById("mSleep").value = entry.sleep;
+    document.getElementById("mSteps").value = entry.steps;
+    document.getElementById("mScreen").value = entry.screen;
+    [ "mWeight","mSleep","mSteps","mScreen" ].forEach(function(id, idx){
+      var keys = ["weight","sleep","steps","screen"];
+      var el = document.getElementById(id);
+      el.disabled = entry.locked;
+      el.oninput = function(){ entry[keys[idx]] = el.value; saveState(); };
+    });
+
+    var finBtn = document.getElementById("finaliseBtn");
+    var savingPanel = document.getElementById("savingPanel");
+    var lockedPanel = document.getElementById("lockedPanel");
+
+    if(entry.locked){
+      finBtn.classList.add("hidden");
+      savingPanel.classList.add("hidden");
+      lockedPanel.classList.remove("hidden");
+      document.getElementById("quoteText").textContent = entry.quote || QUOTES[0];
+      document.getElementById("checkinTimeLabel").textContent = fmtTime(state.checkinTime);
+    } else {
+      finBtn.classList.remove("hidden");
+      lockedPanel.classList.add("hidden");
+      savingPanel.classList.add("hidden");
+    }
+
+    // checkpoint / weekly banners
+    var dn = dayNumber(todayIso);
+    var cpBanner = document.getElementById("checkpointBanner");
+    if([30,60,90].indexOf(dn) !== -1){
+      cpBanner.classList.remove("hidden");
+      document.getElementById("checkpointText").textContent = "CHECKPOINT — DAY "+dn+" REVIEW IS DUE";
+    } else {
+      cpBanner.classList.add("hidden");
+    }
+    var wkBanner = document.getElementById("weeklyBanner");
+    var wk = Math.floor((dn-1)/7)+1;
+    var wkDone = !!state.reviews[wk];
+    if(dn % 7 === 0 && !wkDone){
+      wkBanner.classList.remove("hidden");
+    } else {
+      wkBanner.classList.add("hidden");
+    }
+  }
+
+  function fmtTime(t){
+    var parts = (t||"21:00").split(":");
+    var h = +parts[0], m = parts[1];
+    var ap = h>=12 ? "PM":"AM";
+    var h12 = h%12; if(h12===0) h12=12;
+    return h12+":"+m+" "+ap;
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+    });
+  }
+
+  document.getElementById("finaliseBtn").addEventListener("click", function(){
+    var entry = getEntry(todayIso);
+    var savingPanel = document.getElementById("savingPanel");
+    var fill = document.getElementById("progressFill");
+    document.getElementById("finaliseBtn").classList.add("hidden");
+    savingPanel.classList.remove("hidden");
+    fill.style.width = "0%";
+    requestAnimationFrame(function(){
+      setTimeout(function(){ fill.style.width = "100%"; }, 30);
+    });
+    setTimeout(function(){
+      entry.locked = true;
+      entry.lockedAt = new Date().toISOString();
+      entry.quote = QUOTES[Math.floor(Math.random()*QUOTES.length)];
+      saveState();
+      renderToday();
+    }, 1250);
+  });
+
+  document.getElementById("editDayBtn").addEventListener("click", function(){
+    var entry = getEntry(todayIso);
+    entry.locked = false;
+    saveState();
+    renderToday();
+  });
+
+  // ---------- GRID tab ----------
+  function renderGrid(){
+    var wrap = document.getElementById("gridWrap");
+    wrap.innerHTML = "";
+    var loggedCount = 0, scoreSum = 0, streak = 0, streakBroken = false;
+
+    for(var d=0; d<=90; d++){
+      var dateIso = addDays(state.startDate, d);
+      var entry = state.entries[dateIso];
+      var cell = document.createElement("div");
+      cell.className = "cell";
+      if(dateIso === todayIso) cell.classList.add("today");
+      if([30,60,90].indexOf(d) !== -1) cell.classList.add("checkpoint");
+
+      var sc = (entry && entry.locked) ? scoreOf(entry) : null;
+      if(sc !== null){
+        loggedCount++; scoreSum += sc;
+        var alpha = 0.18 + (sc/100)*0.82;
+        cell.style.background = "rgba(52,224,177,"+alpha.toFixed(2)+")";
+        cell.style.borderColor = "rgba(52,224,177,0.4)";
+        if(!streakBroken && dateIso <= todayIso) streak++;
+      } else {
+        if(dateIso < todayIso) streakBroken = true;
+      }
+      cell.textContent = d;
+      cell.addEventListener("click", function(dt, dn, ent){
+        return function(){ showCellDetail(dt, dn, ent); };
+      }(dateIso, d, entry));
+      wrap.appendChild(cell);
+    }
+    // streak should count backward from today, not forward — recompute properly
+    streak = 0;
+    for(var dd = diffDays(state.startDate, todayIso); dd>=0; dd--){
+      var dIso = addDays(state.startDate, dd);
+      var e = state.entries[dIso];
+      if(e && e.locked && scoreOf(e) >= 75){ streak++; } else { break; }
+    }
+    document.getElementById("statStreak").textContent = streak;
+    document.getElementById("statAvg").textContent = loggedCount ? Math.round(scoreSum/loggedCount)+"%" : "0%";
+    document.getElementById("statDaysLogged").textContent = loggedCount;
+
+    renderWeightChart();
+  }
+
+  function showCellDetail(dateIso, dayNum, entry){
+    var card = document.getElementById("cellDetail");
+    card.style.display = "block";
+    document.getElementById("cellDetailTitle").textContent = "DAY "+dayNum+" — "+fmtDate(dateIso);
+    var body = document.getElementById("cellDetailBody");
+    if(!entry || !entry.locked){
+      body.innerHTML = "Not finalised.";
+      return;
+    }
+    var done = entry.tasks.filter(Boolean).length;
+    body.innerHTML =
+      "Score: "+scoreOf(entry)+"% ("+done+"/"+entry.tasks.length+" non-negotiables)<br>" +
+      "Weight: "+(entry.weight||"—")+" kg &nbsp;·&nbsp; Sleep: "+(entry.sleep||"—")+" hrs<br>" +
+      "Steps: "+(entry.steps||"—")+" &nbsp;·&nbsp; Screen: "+(entry.screen||"—")+" hrs";
+  }
+
+  function renderWeightChart(){
+    var svg = document.getElementById("weightChart");
+    var pts = [];
+    for(var d=0; d<=90; d++){
+      var dateIso = addDays(state.startDate, d);
+      var e = state.entries[dateIso];
+      if(e && e.locked && e.weight){ pts.push({d:d, w:parseFloat(e.weight)}); }
+    }
+    if(pts.length < 2){
+      svg.innerHTML = '<text x="350" y="80" fill="#4b5751" font-family="JetBrains Mono" font-size="11" text-anchor="middle">LOG WEIGHT ON AT LEAST TWO DAYS TO SEE A TREND</text>';
+      return;
+    }
+    var minW = Math.min.apply(null, pts.map(function(p){return p.w;}));
+    var maxW = Math.max.apply(null, pts.map(function(p){return p.w;}));
+    if(minW===maxW){ minW -= 1; maxW += 1; }
+    var W=700,H=140,pad=10;
+    function x(d){ return pad + (d/90)*(W-2*pad); }
+    function y(w){ return H-pad - ((w-minW)/(maxW-minW))*(H-2*pad); }
+    var path = pts.map(function(p,i){ return (i===0?"M":"L")+x(p.d).toFixed(1)+","+y(p.w).toFixed(1); }).join(" ");
+    var dots = pts.map(function(p){ return '<circle cx="'+x(p.d).toFixed(1)+'" cy="'+y(p.w).toFixed(1)+'" r="3" fill="#34e0b1"/>'; }).join("");
+    svg.innerHTML = '<path d="'+path+'" fill="none" stroke="#34e0b1" stroke-width="2"/>' + dots;
+  }
+
+  // ---------- REVIEW tab ----------
+  function weekOfToday(){ return Math.floor((dayNumber(todayIso)-1)/7)+1; }
+
+  function renderReview(){
+    var wk = weekOfToday();
+    document.getElementById("reviewFormLabel").textContent = "WEEK "+wk;
+    var existing = state.reviews[wk];
+    document.getElementById("rvWorked").value = existing ? existing.worked : "";
+    document.getElementById("rvSlipped").value = existing ? existing.slipped : "";
+    document.getElementById("rvWaist").value = existing ? existing.waist : "";
+    document.getElementById("rvScore").value = existing ? existing.score : "";
+
+    var list = document.getElementById("reviewList");
+    var keys = Object.keys(state.reviews).map(Number).sort(function(a,b){return b-a;});
+    if(!keys.length){
+      list.innerHTML = '<p class="note">Nothing logged yet.</p>';
+    } else {
+      list.innerHTML = keys.map(function(k){
+        var r = state.reviews[k];
+        return '<div class="review-item"><div class="rh">WEEK '+k+' · SCORE '+(r.score||"—")+'/10'+(r.waist?" · WAIST "+r.waist+"CM":"")+'</div>'+
+          (r.worked?'<p><b style="color:#eef4f1">Worked:</b> '+escapeHtml(r.worked)+'</p>':'')+
+          (r.slipped?'<p><b style="color:#eef4f1">Slipped:</b> '+escapeHtml(r.slipped)+'</p>':'')+
+          '</div>';
+      }).join("");
+    }
+  }
+
+  document.getElementById("saveReviewBtn").addEventListener("click", function(){
+    var wk = weekOfToday();
+    state.reviews[wk] = {
+      worked: document.getElementById("rvWorked").value,
+      slipped: document.getElementById("rvSlipped").value,
+      waist: document.getElementById("rvWaist").value,
+      score: document.getElementById("rvScore").value,
+      savedAt: new Date().toISOString()
+    };
+    saveState();
+    renderReview();
+    renderToday();
+  });
+
+  // ---------- NUTRITION tab ----------
+  function loadNutritionInputs(){
+    var n = state.nutrition;
+    if(!n) return;
+    document.getElementById("nSex").value = n.sex || "male";
+    document.getElementById("nAge").value = n.age || "";
+    document.getElementById("nHeight").value = n.height || "";
+    document.getElementById("nWeight").value = n.weight || "";
+    document.getElementById("nActivity").value = n.activity || "1.55";
+    document.getElementById("nGoal").value = n.goal !== undefined ? n.goal : "0";
+    computeNutrition(true);
+  }
+
+  document.getElementById("calcBtn").addEventListener("click", function(){ computeNutrition(false); });
+
+  function computeNutrition(silent){
+    var sex = document.getElementById("nSex").value;
+    var age = parseFloat(document.getElementById("nAge").value);
+    var height = parseFloat(document.getElementById("nHeight").value);
+    var weight = parseFloat(document.getElementById("nWeight").value);
+    var activity = parseFloat(document.getElementById("nActivity").value);
+    var goal = parseFloat(document.getElementById("nGoal").value);
+
+    if(!age || !height || !weight){
+      if(!silent) alert("Enter age, height and weight to calculate your targets.");
+      return;
+    }
+
+    state.nutrition = {sex:sex, age:age, height:height, weight:weight, activity:activity, goal:goal};
+    saveState();
+
+    var bmr = sex==="male"
+      ? (10*weight + 6.25*height - 5*age + 5)
+      : (10*weight + 6.25*height - 5*age - 161);
+    var tdee = bmr * activity;
+    var target = tdee * (1+goal);
+    var floor = sex==="male" ? 1500 : 1200;
+    if(target < floor) target = floor;
+    target = Math.round(target/10)*10;
+
+    var protein = Math.round(weight * 2.0);
+    var fat = Math.round((target*0.25)/9);
+    var carbCals = target - (protein*4) - (fat*9);
+    var carbs = Math.max(0, Math.round(carbCals/4));
+
+    document.getElementById("rCal").textContent = target;
+    document.getElementById("rProt").textContent = protein;
+    document.getElementById("rFat").textContent = fat;
+    document.getElementById("rCarb").textContent = carbs;
+    document.getElementById("resultCard").style.display = "block";
+
+    renderMeals(target, protein, fat, carbs);
+  }
+
+  function renderMeals(cal, prot, fat, carb){
+    var split = [
+      {name:"BREAKFAST", pct:0.25, foods:["Eggs or Greek yogurt","Oats or wholegrain toast","A piece of fruit"]},
+      {name:"LUNCH", pct:0.30, foods:["Lean protein — chicken, fish, tofu, or beef","Rice or potatoes","Mixed vegetables + olive oil"]},
+      {name:"DINNER", pct:0.30, foods:["Lean protein source","Whole grain or legumes","Large portion of vegetables"]},
+      {name:"SNACK / POST-TRAINING", pct:0.15, foods:["Protein shake or cottage cheese","Nuts or a piece of fruit"]}
+    ];
+    var html = split.map(function(m){
+      return '<div class="meal"><div class="mh"><span>'+m.name+'</span><span>~'+Math.round(cal*m.pct)+' KCAL · '+Math.round(prot*m.pct)+'G PROTEIN</span></div>' +
+        '<ul>'+m.foods.map(function(f){return '<li>'+f+'</li>';}).join("")+'</ul></div>';
+    }).join("");
+    document.getElementById("mealList").innerHTML = html;
+    document.getElementById("mealCard").style.display = "block";
+  }
+
+  // ---------- SETTINGS tab ----------
+  function renderSettings(){
+    document.getElementById("sStartDate").value = state.startDate;
+    document.getElementById("sCheckinTime").value = state.checkinTime;
+    var box = document.getElementById("taskEditList");
+    box.innerHTML = "";
+    state.tasks.forEach(function(t,i){
+      var row = document.createElement("div");
+      row.className = "task-edit-row";
+      row.innerHTML = '<input type="text" data-i="'+i+'" value="'+escapeHtml(t)+'">';
+      box.appendChild(row);
+    });
+  }
+
+  document.getElementById("saveSettingsBtn").addEventListener("click", function(){
+    var newStart = document.getElementById("sStartDate").value;
+    if(newStart) state.startDate = newStart;
+    state.checkinTime = document.getElementById("sCheckinTime").value || "21:00";
+    var inputs = document.querySelectorAll("#taskEditList input");
+    var newTasks = [];
+    inputs.forEach(function(inp){ newTasks.push(inp.value.trim() || "Untitled"); });
+    state.tasks = newTasks;
+    saveState();
+    renderToday();
+    alert("Settings saved.");
+  });
+
+  document.getElementById("exportBtn").addEventListener("click", function(){
+    var blob = new Blob([JSON.stringify(state,null,2)], {type:"application/json"});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = "90-day-tracker-export.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  document.getElementById("resetBtn").addEventListener("click", function(){
+    if(confirm("This clears every logged day, review, and setting on this device. This can't be undone. Continue?")){
+      localStorage.removeItem(STORE_KEY);
+      state = loadState();
+      renderToday(); renderSettings(); renderReview();
+    }
+  });
+
+  // ---------- init ----------
+  renderToday();
+  renderSettings();
+  loadNutritionInputs();
+
+  // register service worker so the installed app can launch full-screen / offline
+  if("serviceWorker" in navigator){
+    window.addEventListener("load", function(){
+      navigator.serviceWorker.register("sw.js").catch(function(e){
+        console.error("Service worker registration failed", e);
+      });
+    });
+  }
+
+})();
+</script>
+</body>
+</html>
